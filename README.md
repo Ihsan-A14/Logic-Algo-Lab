@@ -25,43 +25,11 @@ By combining these domains, Logic-Algo-Lab serves as a comprehensive "CS Tutor" 
     * **Binary Search:** Visually "cuts" the array in half, graying out discarded sections to demonstrate $O(\log n)$ efficiency.
     * *Educational Constraint:* The UI enforces that **Binary Search only works on sorted data**, reinforcing a critical CS concept.
 
-## 🏆 Fit for HackED Prizes
-
-### 🎓 Social Good Prize (Education)
-* [cite_start]**Criteria:** "A project that educates users about some topic"[cite: 481].
-* **Impact:** Logic-Algo-Lab democratizes access to complex STEM concepts. It replaces abstract mathematical notation with dynamic, interactive animations, accommodating different learning styles (visual vs. logical).
-
-### 🏅 Main Prize (General)
-* [cite_start]**Complexity:** The project implements a custom boolean parser, the Quine-McCluskey minimization algorithm, and state-managed algorithm animations[cite: 363].
-* [cite_start]**Utility:** Addresses a direct need for University CS/Math students to verify their homework and visualize abstract concepts[cite: 366].
-* [cite_start]**Polish:** Features a clean, accessible UI with high-contrast visualizations for maximum readability and usability[cite: 364].
-
 ## 🛠️ Tech Stack
 * **Frontend:** React.js (Vite)
 * **State Management:** React Hooks (`useState`, `useEffect`) for managing algorithm animation frames.
 * **Styling:** Tailwind CSS for a modern, responsive design.
 * **Visualization:** Custom CSS animations & Mermaid.js / SimcirJS (for logic circuits).
-
-## ⚙️ Installation & Setup
-
-To run this project locally:
-
-1.  **Clone the repository**
-    ```bash
-    git clone [https://github.com/yourusername/Logic-Algo-Lab.git](https://github.com/yourusername/Logic-Algo-Lab.git)
-    cd Logic-Algo-Lab
-    ```
-
-2.  **Install dependencies**
-    ```bash
-    npm install
-    ```
-
-3.  **Run the development server**
-    ```bash
-    npm run dev
-    ```
-    Open your browser to the local host link provided (usually `http://localhost:5173`).
 
 ## 📂 Project Structure
 ```text
