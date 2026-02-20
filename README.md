@@ -1,54 +1,16 @@
-# 🧪 Logic-Algo-Lab
+# React + Vite
 
-## 💡 The Problem
-Computer Science students often struggle to connect the dots between **low-level hardware logic** (Boolean algebra, logic gates) and **high-level software algorithms** (sorting, searching). These concepts are usually taught in separate classes with static textbooks, making it hard to visualize how a computer actually processes information from the ground up.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## 🚀 The Solution
-**Logic-Algo-Lab** is an interactive, all-in-one educational suite that bridges this gap. It provides a visual "workbench" where students can:
-1.  **Build & Simplify Logic:** Input raw boolean expressions to instantly generate Truth Tables and visualize circuits.
-2.  **Visualize Algorithms:** Watch sorting and searching algorithms manipulate data in real-time to understand *how* they work, not just *that* they work.
+Currently, two official plugins are available:
 
-By combining these domains, Logic-Algo-Lab serves as a comprehensive "CS Tutor" that is free, accessible, and interactive.
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-## ✨ Key Features
+## React Compiler
 
-### 🛠️ Module 1: The Logic Lab (Hardware)
-* **Truth Table Generator:** Instantly parses complex boolean expressions (e.g., `(A + B) * C`) and generates a formatted Truth Table.
-* **Logic Simplifier:** Uses the **Quine-McCluskey algorithm** to minimize boolean expressions, showing students the most efficient hardware implementation.
-* **Circuit Renderer:** Dynamically draws the logic gates corresponding to the user's input, helping students visualize the physical hardware.
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-### 📊 Module 2: The Algorithm Arena (Software)
-* **Sorting Visualizer:** Implements **Bubble Sort**, **Selection Sort**, and **Quick Sort**.
-    * *Visuals:* Bars change color to distinguish between **comparison** (evaluating) and **swapping** (memory operation), making the internal logic visible.
-* **Searching Visualizer:**
-    * **Linear Search:** Scans elements sequentially to find a target.
-    * **Binary Search:** Visually "cuts" the array in half, graying out discarded sections to demonstrate $O(\log n)$ efficiency.
-    * *Educational Constraint:* The UI enforces that **Binary Search only works on sorted data**, reinforcing a critical CS concept.
+## Expanding the ESLint configuration
 
-## 🛠️ Tech Stack
-* **Frontend:** React.js (Vite)
-* **State Management:** React Hooks (`useState`, `useEffect`) for managing algorithm animation frames.
-* **Styling:** Tailwind CSS for a modern, responsive design.
-* **Visualization:** Custom CSS animations & Mermaid.js / SimcirJS (for logic circuits).
-
-## 📂 Project Structure
-```text
-Logic-Algo-Lab/
-├── src/
-│   ├── components/
-│   │   ├── Navbar.jsx           # Navigation between modules
-│   │   ├── Logic/
-│   │   │   ├── TruthTable.jsx   # Logic parsing & table generation
-│   │   │   └── CircuitDrawer.jsx # Logic gate visualization
-│   │   ├── Algorithms/
-│   │   │   ├── SortingVisualizer.jsx # Bubble/Quick sort logic
-│   │   │   └── SearchingVisualizer.jsx # Binary/Linear search logic
-│   │   └── UI/
-│   │       └── Button.jsx       # Reusable UI components
-│   ├── utils/
-│   │   ├── logicParser.js       # Core boolean logic & Quine-McCluskey
-│   │   └── sortingAlgos.js      # Sorting algorithms implementation
-│   ├── App.jsx
-│   └── main.jsx
-├── package.json
-└── README.md
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
