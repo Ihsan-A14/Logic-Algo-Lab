@@ -1,28 +1,46 @@
-import React, { useState, useEffect } from 'react';
-import { generateTruthTable } from '../../utils/logicParser';
+import React, { useState, useEffect, useRef } from 'react';
+import { generateTruthTable, getSimplifiedExpression } from '../../utils/logicParser';
+import CircuitDrawer from './CircuitDrawer';
 
 const TruthTable = () => {
   const [expression, setExpression] = useState('(A + B) * C');
   const [tableData, setTableData] = useState(null);
+  const [simplified, setSimplified] = useState('');
   const [error, setError] = useState(false);
+  const [activeInputs, setActiveInputs] = useState(null);
 
-  // Automatically calculate whenever expression changes
+  const circuitRef = useRef(null);
+
   useEffect(() => {
-    // Basic debounce to stop it from crashing while typing
     const timer = setTimeout(() => {
       if (expression.length > 0) {
         const result = generateTruthTable(expression);
         if (result) {
           setTableData(result);
+          setSimplified(getSimplifiedExpression(result));
           setError(false);
+          setActiveInputs(null);
         } else {
           setError(true);
         }
       }
-    }, 300); // Wait 300ms after user stops typing
-
+    }, 300);
     return () => clearTimeout(timer);
   }, [expression]);
+
+  const handleRowClick = (row) => {
+    const inputs = { ...row };
+    delete inputs.Result;
+    setActiveInputs(inputs);
+
+    // Auto-Scroll to Circuit
+    if (circuitRef.current) {
+      circuitRef.current.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center' 
+      });
+    }
+  };
 
   return (
     <div className="p-6 bg-gray-800 rounded-lg shadow-xl border border-gray-700">
@@ -34,7 +52,6 @@ const TruthTable = () => {
       <div className="mb-6">
         <label className="block text-gray-300 mb-2 font-medium">
           Enter Boolean Expression:
-          <span className="text-xs text-gray-500 ml-2">(Supported: +, *, A', ( ), etc.)</span>
         </label>
         <input 
           type="text" 
@@ -48,41 +65,70 @@ const TruthTable = () => {
         {error && <p className="text-red-400 text-sm mt-2">Invalid expression syntax.</p>}
       </div>
 
-      {/* Results Section */}
+      {/* Simplified Formula */}
+      {simplified && !error && (
+        <div className="mb-6 p-4 bg-gray-700 rounded border border-gray-600">
+          <h3 className="text-gray-300 text-xs font-bold uppercase mb-1 tracking-wider">Canonical Sum of Products:</h3>
+          <p className="text-xl font-mono text-green-400 tracking-wide break-all">{simplified}</p>
+        </div>
+      )}
+
+      {/* Circuit Diagram (With Ref for auto-scroll) */}
+      {!error && (
+        <div ref={circuitRef} className="scroll-mt-4 mb-8">
+          <CircuitDrawer expression={expression} simplified={simplified} activeInputs={activeInputs} />
+        </div>
+      )}
+
+      {/* Results Table */}
       <div className="bg-gray-900 rounded-lg overflow-hidden border border-gray-700">
         {tableData ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-center border-collapse">
-              <thead>
-                <tr className="bg-gray-800 text-gray-300 border-b border-gray-700">
-                  {tableData.headers.map((header, i) => (
-                    <th key={i} className={`p-3 font-bold ${header === 'Result' ? 'text-blue-400 border-l border-gray-600' : ''}`}>
-                      {header}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {tableData.rows.map((row, rowIndex) => (
-                  <tr key={rowIndex} className="hover:bg-gray-800 transition-colors border-b border-gray-800 last:border-0">
-                    {tableData.headers.map((header, colIndex) => (
-                      <td key={colIndex} className={`p-3 font-mono ${
-                        header === 'Result' 
-                          ? (row[header] === 1 ? 'text-green-400 font-bold border-l border-gray-600' : 'text-red-400 font-bold border-l border-gray-600') 
-                          : (row[header] === 1 ? 'text-white' : 'text-gray-500')
-                      }`}>
-                        {row[header]}
-                      </td>
+          <div>
+            <div className="p-2 bg-gray-800 text-center text-xs text-gray-400 uppercase tracking-widest border-b border-gray-700">
+              Click a row to simulate the circuit! 👇
+            </div>
+            {/* REMOVED max-h-[500px] so it shows ALL rows at once */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-center border-collapse">
+                <thead>
+                  <tr>
+                    {tableData.headers.map((header, i) => (
+                      <th key={i} className={`p-3 font-bold text-gray-300 border-b border-gray-600 bg-gray-800 ${header === 'Result' ? 'text-blue-400 border-l' : ''}`}>
+                        {header}
+                      </th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {tableData.rows.map((row, rowIndex) => {
+                    const isActive = activeInputs && JSON.stringify(activeInputs) === JSON.stringify(Object.fromEntries(Object.entries(row).filter(([k]) => k !== 'Result')));
+                    
+                    return (
+                      <tr 
+                        key={rowIndex} 
+                        onClick={() => handleRowClick(row)}
+                        className={`cursor-pointer transition-all border-b border-gray-800 last:border-0 ${
+                          isActive ? 'bg-blue-900/50 hover:bg-blue-900/60 ring-2 ring-inset ring-blue-500' : 'hover:bg-gray-800'
+                        }`}
+                      >
+                        {tableData.headers.map((header, colIndex) => (
+                          <td key={colIndex} className={`p-3 font-mono ${
+                            header === 'Result' 
+                              ? (row[header] === 1 ? 'text-green-400 font-bold border-l border-gray-600' : 'text-red-400 font-bold border-l border-gray-600') 
+                              : (row[header] === 1 ? 'text-white' : 'text-gray-500')
+                          }`}>
+                            {row[header]}
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         ) : (
-          <div className="p-8 text-center text-gray-500 italic">
-            Start typing to generate a table...
-          </div>
+          <div className="p-8 text-center text-gray-500 italic">Start typing...</div>
         )}
       </div>
     </div>
