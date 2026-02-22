@@ -1,4 +1,4 @@
-# 🧪 Logic-Algo-Lab
+# 🧪 AlgoVista
 
 > **HackED 2026 Submission**
 >
@@ -8,11 +8,11 @@
 Computer Science students often struggle to connect the dots between **low-level hardware logic** (Boolean algebra, logic gates) and **high-level software algorithms** (sorting, searching). These concepts are usually taught in separate classes with static textbooks, making it hard to visualize how a computer actually processes information from the ground up.
 
 ## 🚀 The Solution
-**Logic-Algo-Lab** is an interactive, all-in-one educational suite that bridges this gap. It provides a visual "workbench" where students can:
+**AlgoVista** is an interactive, all-in-one educational suite that bridges this gap. It provides a visual "workbench" where students can:
 1.  **Build & Simplify Logic:** Input raw boolean expressions to instantly generate Truth Tables and visualize circuits.
 2.  **Visualize Algorithms:** Watch sorting and searching algorithms manipulate data in real-time to understand *how* they work, not just *that* they work.
 
-By combining these domains, Logic-Algo-Lab serves as a comprehensive "CS Tutor" that is free, accessible, and interactive.
+By combining these domains, AlgoVista serves as a comprehensive "CS Tutor" that is free, accessible, and interactive.
 
 ## ✨ Key Features
 
@@ -41,7 +41,7 @@ To run this project locally:
 
 1.  **Clone the repository**
     ```bash
-    git clone [https://github.com/yourusername/Logic-Algo-Lab.git](https://github.com/yourusername/Logic-Algo-Lab.git)
+    git clone [https://github.com/yourusername/Logic-Algo-Lab.git]
     cd Logic-Algo-Lab
     ```
 
