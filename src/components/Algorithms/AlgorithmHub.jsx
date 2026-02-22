@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import SortingVisualizer from './SortingVisualizer';
 import SearchingVisualizer from './SearchingVisualizer';
-import TreeVisualizer from './TreeVisualizer'; // Import New Component
+import TreeVisualizer from './TreeVisualizer';
+import GraphVisualizer from './GraphVisualizer'; // Import Graph
 
 const AlgorithmHub = () => {
   const [activeModule, setActiveModule] = useState('sorting');
@@ -18,39 +19,23 @@ const AlgorithmHub = () => {
       </div>
 
       <div className="flex justify-center mb-10">
-        <div className="bg-gray-800 p-1 rounded-xl inline-flex shadow-xl border border-gray-700 flex-wrap justify-center">
-          <button
-            onClick={() => setActiveModule('sorting')}
-            className={`px-6 md:px-8 py-3 rounded-lg text-sm font-bold uppercase tracking-wider transition-all duration-300 ${
-              activeModule === 'sorting'
-                ? 'bg-blue-600 text-white shadow-lg transform scale-105'
-                : 'text-gray-400 hover:text-white hover:bg-gray-700'
-            }`}
-          >
-            📊 Sorting
-          </button>
-          
-          <button
-            onClick={() => setActiveModule('searching')}
-            className={`px-6 md:px-8 py-3 rounded-lg text-sm font-bold uppercase tracking-wider transition-all duration-300 ${
-              activeModule === 'searching'
-                ? 'bg-purple-600 text-white shadow-lg transform scale-105'
-                : 'text-gray-400 hover:text-white hover:bg-gray-700'
-            }`}
-          >
-            🔍 Searching
-          </button>
-
-          <button
-            onClick={() => setActiveModule('trees')}
-            className={`px-6 md:px-8 py-3 rounded-lg text-sm font-bold uppercase tracking-wider transition-all duration-300 ${
-              activeModule === 'trees'
-                ? 'bg-green-600 text-white shadow-lg transform scale-105'
-                : 'text-gray-400 hover:text-white hover:bg-gray-700'
-            }`}
-          >
-            🌳 Trees
-          </button>
+        <div className="bg-gray-800 p-1 rounded-xl inline-flex shadow-xl border border-gray-700 flex-wrap justify-center gap-1">
+          {/* Navigation Buttons */}
+          {['sorting', 'searching', 'trees', 'graphs'].map(module => (
+              <button
+                key={module}
+                onClick={() => setActiveModule(module)}
+                className={`px-6 md:px-8 py-3 rounded-lg text-sm font-bold uppercase tracking-wider transition-all duration-300 ${
+                  activeModule === module
+                    ? 'bg-blue-600 text-white shadow-lg transform scale-105'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                }`}
+              >
+                {module === 'graphs' ? '🕸 Graphs' : 
+                 module === 'trees' ? '🌳 Trees' :
+                 module === 'searching' ? '🔍 Searching' : '📊 Sorting'}
+              </button>
+          ))}
         </div>
       </div>
 
@@ -58,10 +43,11 @@ const AlgorithmHub = () => {
         {activeModule === 'sorting' && <SortingVisualizer />}
         {activeModule === 'searching' && <SearchingVisualizer />}
         {activeModule === 'trees' && <TreeVisualizer />}
+        {activeModule === 'graphs' && <GraphVisualizer />}
       </div>
 
       <div className="text-center mt-12 text-gray-600 text-xs uppercase tracking-widest">
-        Logic-Algo-Lab v1.1 • Built for CS Education
+        Logic-Algo-Lab v1.2 • Built for CS Education
       </div>
     </div>
   );
