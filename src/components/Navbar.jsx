@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Menu, X, Cpu, Network } from 'lucide-react';
 
 const Navbar = ({ setActiveTab, activeTab }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
-  // 💎 Glass Effect Trigger
+  // Glass effect
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
@@ -76,9 +75,10 @@ const Navbar = ({ setActiveTab, activeTab }) => {
           <div className="flex md:hidden">
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="p-2 rounded-md text-slate-400 hover:text-white hover:bg-white/10"
+              className="p-2 rounded-md text-slate-400 hover:text-white hover:bg-white/10 text-xl font-bold"
             >
-              {isOpen ? <X size={24} /> : <Menu size={24} />}
+              {/* Uses Unicode characters instead of icons */}
+              {isOpen ? '✕' : '☰'}
             </button>
           </div>
         </div>
