@@ -7,389 +7,202 @@ mermaid.initialize({
   securityLevel: 'loose',
   flowchart: { 
     curve: 'stepAfter',
-    rankSpacing: 50,
-    nodeSpacing: 40,
+    rankSpacing: 40,
+    nodeSpacing: 30,
   },
   themeVariables: {
     darkMode: true,
-    background: '#111827', 
+    background: '#111827', // Matches gray-900
     primaryColor: '#1f2937', 
     primaryTextColor: '#fff',
     lineColor: '#4b5563',
+    mainBkg: '#1f2937', // Default node background
   }
 });
 
 const CircuitDrawer = ({ expression, simplified, activeInputs }) => {
   const mermaidRef = useRef(null);
   const [simulationStep, setSimulationStep] = useState(0);
-  const [renderError, setRenderError] = useState(null);
-  const [showHint, setShowHint] = useState(true);
-  const [viewMode, setViewMode] = useState('simplified');
+  const [viewMode, setViewMode] = useState('original'); 
 
-  // Hint Timer
+  // Simulation Timer
   useEffect(() => {
-    const timer = setTimeout(() => setShowHint(false), 5000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Animation Timer
-  useEffect(() => {
-    if (!activeInputs) {
-      setSimulationStep(0);
-      return;
-    }
+    if (!activeInputs) { setSimulationStep(0); return; }
     setSimulationStep(1);
-    const timers = [];
-    for (let i = 1; i <= 5; i++) {
-        const id = setTimeout(() => {
-            setSimulationStep(prev => (prev < i ? i : prev));
-        }, i * 600);
-        timers.push(id);
-    }
+    const timers = [1, 2, 3, 4, 5].map(i => setTimeout(() => setSimulationStep(i), i * 600));
     return () => timers.forEach(clearTimeout);
   }, [activeInputs]);
 
-  // --- MAIN RENDER LOGIC ---
+  // Graph Generator
   useEffect(() => {
-    const rawExpr = (viewMode === 'simplified' ? (simplified || expression) : expression) || "";
-    if (!rawExpr) return;
-
-    // --- SHARED HELPERS ---
-    let graph = `flowchart LR\n`;
-    let linkCounter = 0; 
-
-    // Extract variables properly
-    const vars = [...new Set(rawExpr.match(/[A-Z]/g))].sort();
-
-    const evaluate = (subExpr) => {
-        if (!activeInputs) return false;
-        try {
-            // Handle constants
-            if (subExpr === '1') return true;
-            if (subExpr === '0') return false;
-
-            // Handle implied multiplication (AB -> A*B)
-            let safeExpr = subExpr.replace(/([A-Z])([A-Z])/g, '$1*$2');
-            safeExpr = safeExpr.replace(/\+/g, '||').replace(/\*/g, '&&').replace(/([A-Z])'/g, '!$1');
-            const func = new Function(...vars, `return !!(${safeExpr})`);
-            const args = vars.map(v => activeInputs[v] === 1);
-            return func(...args);
-        } catch (e) { return false; }
-    };
-
-    const addWire = (from, to, isActive, label = "") => {
-        const color = isActive ? "#22c55e" : "#4b5563";
-        const width = isActive ? "3px" : "1px";
-        const arrow = isActive ? "==>" : "-.->";
-        graph += `  ${from} ${arrow} ${label} ${to}\n`;
-        graph += `linkStyle ${linkCounter} stroke:${color},stroke-width:${width};\n`;
-        linkCounter++;
-    };
-
-    // --- ENGINE 1: SIMPLIFIED (Robust Sum of Products) ---
-    const renderSimplified = (expr) => {
-        // 0. Handle Constants (Tautology/Contradiction)
-        if (expr === '1' || expr === '0') {
-             graph += `  CONST[${expr === '1' ? 'Always True' : 'Always False'}]:::${expr === '1' ? 'on' : 'off'}\n`;
-             graph += `  Result((Output)):::${expr === '1' ? 'on' : 'off'}\n`;
-             addWire("CONST", "Result", expr === '1');
-             // Add styles manually here since we skip the rest
-             graph += `classDef on fill:#064e3b,stroke:#22c55e,stroke-width:3px,color:#fff;\n`;
-             graph += `classDef off fill:#1f2937,stroke:#4b5563,stroke-width:1px,stroke-dasharray: 5 5,color:#9ca3af;\n`;
-             return; 
-        }
-
-        // 1. Inputs
-        graph += `  subgraph Inputs ["Inputs"]\n    direction TB\n`;
-        vars.forEach(v => {
-            const isActive = activeInputs && activeInputs[v] === 1 && simulationStep >= 1;
-            graph += `    ${v}["${v} ${isActive ? '(1)' : '(0)'}"]${isActive ? ":::on" : ":::off"}\n`;
-        });
-        graph += `  end\n`;
-
-        // 2. Parse (Handle "A + B" vs "AB" vs "A")
-        // Remove spaces
-        const cleanExpr = expr.replace(/\s/g, '');
-        const parts = cleanExpr.split('+');
-        const outputActive = evaluate(cleanExpr);
-
-        // 3. Logic Layer (The Middle)
-        // We only draw a "Gate Layer" if there is actual logic to do.
-        // If the expression is just "A", we skip this layer.
-        
-        const needsAndGates = parts.some(p => p.length > 1 || p.includes('*'));
-        
-        if (needsAndGates) {
-            graph += `  subgraph Gates ["Logic Gates"]\n    direction TB\n`;
-            parts.forEach((part, idx) => {
-                const isComplex = part.length > 1 || part.includes('*');
-                if (isComplex) {
-                    const isActive = evaluate(part);
-                    const gateOn = isActive && simulationStep >= 3;
-                    graph += `    AND_${idx}(["AND"])${gateOn ? ":::on" : ":::off"}\n`;
-                }
-            });
-            graph += `  end\n`;
-        }
-
-        // 4. Output Layer
-        // We need an OR gate ONLY if we have multiple parts (e.g. A + B)
-        graph += `  subgraph Output ["Output"]\n    direction TB\n`;
-        
-        if (parts.length > 1) {
-            const orOn = outputActive && simulationStep >= 4;
-            graph += `    OR_GATE{{"OR"}}${orOn ? ":::on" : ":::off"}\n`;
-        }
-        
-        // Final Output Bulb
-        const resOn = outputActive && simulationStep >= 5;
-        graph += `    Result((Output))${resOn ? ":::on" : ":::off"}\n`;
-        graph += `  end\n`;
-
-        // 5. Wiring (Connecting it all)
-        parts.forEach((part, idx) => {
-            const partVars = part.match(/[A-Z]/g) || [];
-            const isComplex = part.length > 1 || part.includes('*');
-            const partActive = evaluate(part);
-
-            if (isComplex) {
-                // SCENARIO: Complex Term (e.g. "AB" or "A'B")
-                // 1. Wire Inputs -> AND Gate
-                partVars.forEach(v => {
-                     const isNot = part.includes(v + "'");
-                     const val = activeInputs ? activeInputs[v] : 0;
-                     const match = isNot ? (val === 0) : (val === 1);
-                     const hot = simulationStep >= 2 && match;
-                     addWire(v, `AND_${idx}`, hot, isNot ? "|NOT|" : "");
-                });
-
-                // 2. Wire AND Gate -> Next Stage
-                if (parts.length > 1) {
-                    // AND -> OR
-                    addWire(`AND_${idx}`, "OR_GATE", partActive && simulationStep >= 4);
-                } else {
-                    // AND -> Output (Direct)
-                    addWire(`AND_${idx}`, "Result", partActive && simulationStep >= 5);
-                }
-            } else {
-                // SCENARIO: Simple Term (e.g. "A")
-                const v = partVars[0];
-                const isNot = part.includes(v + "'");
-                const val = activeInputs ? activeInputs[v] : 0;
-                const match = isNot ? (val === 0) : (val === 1);
-
-                if (parts.length > 1) {
-                    // A -> OR
-                    addWire(v, "OR_GATE", simulationStep >= 4 && match, isNot ? "|NOT|" : "");
-                } else {
-                    // A -> Output (Direct Wire)
-                    addWire(v, "Result", simulationStep >= 5 && match, isNot ? "|NOT|" : "");
-                }
-            }
-        });
-
-        // Final OR -> Output Connection
-        if (parts.length > 1) {
-            addWire("OR_GATE", "Result", outputActive && simulationStep >= 5);
-        }
-    };
-
-    // --- ENGINE 2: ORIGINAL (Structure Preserving) ---
-    const renderOriginal = (expr) => {
-        let clean = expr.replace(/\s/g, '');
-        // Remove strictly wrapping parens: (A+B) -> A+B
-        if (clean.match(/^\([^)]+\)$/) && !clean.includes(') * (') && !clean.includes(') + (')) {
-            clean = clean.replace(/^\((.*)\)$/, '$1');
-        }
-
-        // Detect Main Operator
-        let topOp = 'OR';
-        let splitChar = '+';
-        let depth = 0;
-        let foundPlus = false;
-        
-        for (let c of clean) {
-            if (c === '(') depth++;
-            else if (c === ')') depth--;
-            else if (c === '+' && depth === 0) foundPlus = true;
-        }
-
-        if (!foundPlus) {
-            topOp = 'AND';
-            splitChar = '*';
-        }
-
-        // Split
-        let parts = [];
-        let curr = "";
-        depth = 0;
-        for (let c of clean) {
-            if (c === '(') depth++;
-            else if (c === ')') depth--;
-            
-            if (c === splitChar && depth === 0) {
-                parts.push(curr);
-                curr = "";
-            } else {
-                curr += c;
-            }
-        }
-        if (curr) parts.push(curr);
-
-        // Inputs
-        graph += `  subgraph Inputs ["Inputs"]\n    direction TB\n`;
-        vars.forEach(v => {
-            const isActive = activeInputs && activeInputs[v] === 1 && simulationStep >= 1;
-            graph += `    ${v}["${v} ${isActive ? '(1)' : '(0)'}"]${isActive ? ":::on" : ":::off"}\n`;
-        });
-        graph += `  end\n`;
-
-        // Gates
-        graph += `  subgraph Gates ["Logic Gates"]\n    direction TB\n`;
-        parts.forEach((part, idx) => {
-            const isGroup = part.includes('+') || part.includes('*') || part.length > 2;
-            if (isGroup) {
-                const isActive = evaluate(part);
-                const gateOn = isActive && simulationStep >= 3;
-                const subType = topOp === 'AND' ? 'OR' : 'AND';
-                const shapeL = subType === 'AND' ? '([' : '{{';
-                const shapeR = subType === 'AND' ? '])' : '}}';
-                graph += `    SUB_${idx}${shapeL}"${subType}"${shapeR}${gateOn ? ":::on" : ":::off"}\n`;
-            }
-        });
-        graph += `  end\n`;
-
-        // Output
-        graph += `  subgraph Output ["Output"]\n    direction TB\n`;
-        const outActive = evaluate(clean);
-        if (parts.length > 1) {
-            const finalOn = outActive && simulationStep >= 4;
-            const shapeL = topOp === 'AND' ? '([' : '{{';
-            const shapeR = topOp === 'AND' ? '])' : '}}';
-            graph += `    FINAL${shapeL}"${topOp}"${shapeR}${finalOn ? ":::on" : ":::off"}\n`;
-        }
-        graph += `    Result((Output))${outActive && simulationStep >= 5 ? ":::on" : ":::off"}\n`;
-        graph += `  end\n`;
-
-        // Wiring
-        parts.forEach((part, idx) => {
-            const partVars = part.match(/[A-Z]/g) || [];
-            const isGroup = part.includes('+') || part.includes('*') || part.length > 2;
-            const partActive = evaluate(part);
-
-            if (isGroup) {
-                partVars.forEach(v => {
-                     const isNot = part.includes(v + "'");
-                     const val = activeInputs ? activeInputs[v] : 0;
-                     const match = isNot ? (val === 0) : (val === 1);
-                     const hot = simulationStep >= 2 && match;
-                     addWire(v, `SUB_${idx}`, hot, isNot ? "|NOT|" : "");
-                });
-                if (parts.length > 1) addWire(`SUB_${idx}`, "FINAL", partActive && simulationStep >= 4);
-                else addWire(`SUB_${idx}`, "Result", partActive && simulationStep >= 5);
-            } else {
-                const v = partVars[0];
-                const isNot = part.includes(v + "'");
-                const val = activeInputs ? activeInputs[v] : 0;
-                const match = isNot ? (val === 0) : (val === 1);
-                
-                if (parts.length > 1) addWire(v, "FINAL", simulationStep >= 4 && match, isNot ? "|NOT|" : "");
-                else addWire(v, "Result", simulationStep >= 5 && match, isNot ? "|NOT|" : "");
-            }
-        });
-
-        if (parts.length > 1) addWire("FINAL", "Result", outActive && simulationStep >= 5);
-    };
-
-    // --- EXECUTE ---
-    if (viewMode === 'simplified') {
-        renderSimplified(rawExpr);
-    } else {
-        renderOriginal(rawExpr);
+    let rawExpr = viewMode === 'simplified' ? simplified : expression;
+    if (!rawExpr || rawExpr === '0' || rawExpr === '1') {
+       if(mermaidRef.current) mermaidRef.current.innerHTML = '<div class="p-10 text-gray-500 text-center text-sm">Constant Value: Circuit not required.</div>';
+       return;
     }
 
-    // --- STYLES ---
-    graph += `classDef default fill:#1f2937,stroke:#6b7280,stroke-width:1px,color:#fff;\n`;
-    graph += `classDef input fill:#111827,stroke:#3b82f6,stroke-width:2px;\n`;
-    graph += `classDef on fill:#064e3b,stroke:#22c55e,stroke-width:3px,color:#fff;\n`;
-    graph += `classDef off fill:#1f2937,stroke:#4b5563,stroke-width:1px,stroke-dasharray: 5 5,color:#9ca3af;\n`;
-    graph += `classDef cluster fill:#1f2937,fill-opacity:0.5,stroke:#374151,stroke-width:2px,color:#fff;\n`;
-    graph += `class Inputs,Gates,Output cluster;\n`;
+    const generateGraph = (expr) => {
+      let cleanExpr = expr.replace(/\s/g, '');
+      const vars = [...new Set(cleanExpr.match(/[A-Z]/g))].sort();
+      let graph = `flowchart LR\n`;
+      let linkId = 0; 
 
-    // Render
+      const addWire = (from, to, active, label="") => {
+          const color = active ? "#22c55e" : "#4b5563"; // Green or Gray
+          const width = active ? "3px" : "1px";
+          const arrow = active ? "==>" : "-.->";
+          graph += `  ${from} ${arrow} ${label} ${to}\n`;
+          graph += `linkStyle ${linkId++} stroke:${color},stroke-width:${width};\n`;
+      };
+
+      // --- INPUTS ---
+      graph += `  subgraph Inputs\n    direction TB\n`;
+      vars.forEach(v => {
+        const isActive = activeInputs && activeInputs[v] === 1 && simulationStep >= 1;
+        graph += `    ${v}["${v} (${isActive?1:0})"]:::${isActive?'on':'off'}\n`;
+      });
+      graph += `  end\n`;
+      // Apply Translucent Style to Inputs Box
+      graph += `  style Inputs fill:#ffffff05,stroke:#ffffff10,stroke-width:1px,rx:10,ry:10,color:#9ca3af\n`;
+
+      // --- LOGIC GATES ---
+      graph += `  subgraph Logic\n    direction TB\n`;
+      
+      if (viewMode === 'original' && expr.includes('(')) {
+          cleanExpr = cleanExpr.replace(/\(/g, '').replace(/\)/g, ''); 
+      }
+      
+      const terms = cleanExpr.split('+').filter(t => t.length > 0);
+      const needsOr = terms.length > 1;
+      let orInputs = [];
+
+      terms.forEach((term, idx) => {
+          const literals = term.match(/[A-Z]'?/g) || [];
+          const needsAnd = literals.length > 1;
+          const gateId = `AND_${idx}`;
+          const isTermActive = (() => {
+              if(!activeInputs) return false;
+              try {
+                  const js = term.replace(/([A-Z])'/g, '!$1').replace(/([A-Z])([A-Z])/g, '$1&&$2'); 
+                  const f = new Function(...vars, `return !!(${js})`);
+                  return f(...vars.map(v=>activeInputs[v]===1));
+              } catch { return false; }
+          })();
+
+          if (needsAnd) {
+              const gateOn = isTermActive && simulationStep >= 3;
+              graph += `    ${gateId}(["AND"]):::${gateOn?'on':'off'}\n`;
+              orInputs.push({ id: gateId, active: isTermActive });
+          } else {
+              if(literals.length === 0) return;
+              const lit = literals[0];
+              const isNot = lit.includes("'");
+              const v = lit.replace("'", "");
+              const val = activeInputs ? activeInputs[v] : 0;
+              const isActive = isNot ? val === 0 : val === 1;
+
+              if (isNot) {
+                  const notId = `NOT_DIRECT_${idx}`;
+                  const notOn = simulationStep >= 2 && isActive;
+                  graph += `    ${notId}>"NOT"]:::${notOn?'on':'off'}\n`;
+                  orInputs.push({ id: notId, active: isActive });
+                  addWire(v, notId, simulationStep >= 2 && val === 1);
+              } else {
+                  orInputs.push({ id: v, active: isActive, isDirect: true });
+              }
+          }
+
+          if (needsAnd) {
+              literals.forEach((lit, litIdx) => {
+                  const v = lit.replace("'", "");
+                  const isNot = lit.includes("'");
+                  const val = activeInputs ? activeInputs[v] : 0;
+                  
+                  if (isNot) {
+                      const notId = `NOT_${idx}_${litIdx}`;
+                      const notActive = simulationStep >= 2 && val === 0;
+                      graph += `    ${notId}>"NOT"]:::${notActive?'on':'off'}\n`;
+                      
+                      addWire(v, notId, simulationStep >= 2 && val === 1);
+                      addWire(notId, gateId, simulationStep >= 2 && notActive);
+                  } else {
+                      addWire(v, gateId, simulationStep >= 2 && val === 1);
+                  }
+              });
+          }
+      });
+      graph += `  end\n`;
+      // Apply Translucent Style to Logic Box
+      graph += `  style Logic fill:#ffffff05,stroke:#ffffff10,stroke-width:1px,rx:10,ry:10,color:#9ca3af\n`;
+
+      // --- OUTPUT ---
+      graph += `  subgraph Output\n    direction TB\n`;
+      const finalActive = (() => {
+          if(!activeInputs) return false;
+          try {
+             const js = cleanExpr.replace(/\+/g,'||').replace(/([A-Z])'/g,'!$1').replace(/([A-Z])([A-Z])/g, '$1&&$2');
+             const f = new Function(...vars, `return !!(${js})`);
+             return f(...vars.map(v=>activeInputs[v]===1));
+          } catch { return false; }
+      })();
+
+      if (needsOr) {
+          const orOn = finalActive && simulationStep >= 4;
+          graph += `    OR_GATE{{"OR"}}:::${orOn?'on':'off'}\n`;
+          graph += `    Result((Out)):::${finalActive && simulationStep>=5?'on':'off'}\n`;
+          
+          orInputs.forEach(inp => {
+             const wireHot = inp.active && (inp.isDirect ? simulationStep >= 2 : simulationStep >= 4);
+             addWire(inp.id, "OR_GATE", wireHot);
+          });
+          addWire("OR_GATE", "Result", finalActive && simulationStep >= 5);
+      } else {
+          const single = orInputs[0];
+          graph += `    Result((Out)):::${finalActive && simulationStep>=5?'on':'off'}\n`;
+          if (single) {
+              const wireHot = single.active && simulationStep >= 5;
+              addWire(single.id, "Result", wireHot);
+          }
+      }
+      graph += `  end\n`;
+      // Apply Translucent Style to Output Box
+      graph += `  style Output fill:#ffffff05,stroke:#ffffff10,stroke-width:1px,rx:10,ry:10,color:#9ca3af\n`;
+
+      // Styles
+      // "default" is for non-active gates
+      graph += `classDef default fill:#1f2937,stroke:#6b7280,stroke-width:1px,color:#fff;\n`;
+      // "on" is for active gates
+      graph += `classDef on fill:#064e3b,stroke:#22c55e,stroke-width:3px,color:#fff;\n`;
+      // "off" is for inactive gates
+      graph += `classDef off fill:#1f2937,stroke:#4b5563,stroke-width:1px,stroke-dasharray: 5 5,color:#9ca3af;\n`;
+
+      return graph;
+    };
+
     if (mermaidRef.current) {
-        mermaidRef.current.innerHTML = '';
-        const uniqueId = `circuit-${Date.now()}`;
-        try {
-            mermaid.render(uniqueId, graph).then(r => mermaidRef.current.innerHTML = r.svg);
-            setRenderError(null);
-        } catch (e) {
-            setRenderError("Circuit too complex to render.");
-        }
+      mermaidRef.current.innerHTML = '';
+      mermaidRef.current.removeAttribute('data-processed');
+      try {
+        mermaid.render(`circuit-${Date.now()}`, generateGraph(rawExpr))
+          .then(r => mermaidRef.current.innerHTML = r.svg);
+      } catch(e) {}
     }
-
   }, [expression, simplified, activeInputs, simulationStep, viewMode]);
 
   return (
-    <div className="bg-gray-900 p-6 rounded-lg border border-gray-700 mt-6 relative">
-        <div className="flex justify-between items-start mb-4">
-             <div>
-                 <h3 className="text-gray-400 text-sm font-bold uppercase tracking-wider">
-                    Circuit Simulation
-                    {activeInputs && <span className="text-green-400 ml-2 animate-pulse">• LIVE</span>}
-                </h3>
-                {activeInputs && (
-                    <div className="text-xs font-mono text-gray-500 mt-1">
-                        Step: {simulationStep}/5
-                    </div>
-                )}
+    <div className="bg-gray-900 p-6 rounded-lg border border-gray-700 relative">
+        <div className="flex justify-between items-center mb-6">
+             <div className="flex items-center gap-2">
+                 <h3 className="text-gray-400 text-sm font-bold uppercase tracking-wider">Circuit Simulation</h3>
+                 {activeInputs && <span className="text-xs bg-green-900 text-green-400 px-2 py-0.5 rounded animate-pulse">LIVE</span>}
              </div>
-
-             <div className="flex bg-gray-800 rounded-lg p-1 border border-gray-700">
-                <button
-                    onClick={() => setViewMode('original')}
-                    className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${
-                        viewMode === 'original' 
-                        ? 'bg-blue-600 text-white shadow' 
-                        : 'text-gray-400 hover:text-gray-200'
-                    }`}
-                >
-                    Original
-                </button>
-                <button
-                    onClick={() => setViewMode('simplified')}
-                    className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${
-                        viewMode === 'simplified' 
-                        ? 'bg-green-600 text-white shadow' 
-                        : 'text-gray-400 hover:text-gray-200'
-                    }`}
-                >
-                    Simplified
-                </button>
+             <div className="flex bg-gray-800 rounded p-1">
+                <button onClick={() => setViewMode('original')} className={`px-3 py-1 text-xs font-bold rounded ${viewMode==='original'?'bg-blue-600 text-white':'text-gray-400'}`}>Original</button>
+                <button onClick={() => setViewMode('simplified')} className={`px-3 py-1 text-xs font-bold rounded ${viewMode==='simplified'?'bg-green-600 text-white':'text-gray-400'}`}>Simplified</button>
              </div>
         </div>
-
-        {!activeInputs && !renderError && (
-           <div 
-             className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 
-             text-gray-400/50 pointer-events-none text-sm font-medium z-10 
-             bg-gray-900/80 px-4 py-2 rounded border border-gray-800
-             transition-opacity duration-1000 ease-in-out
-             ${showHint ? 'opacity-100' : 'opacity-0'}`}
-           >
-             Click a Table Row to Start Simulation
-           </div>
-        )}
-
-        {renderError && (
-            <div className="text-yellow-400 text-center p-8 border border-yellow-500/50 rounded bg-yellow-900/10">
-                <p className="font-bold">⚠️ View Unavailable</p>
-                <p className="text-sm mt-2 opacity-80">{renderError}</p>
-            </div>
-        )}
-
-        <div className="flex justify-center items-center overflow-x-auto min-h-[250px] bg-gray-950 rounded-lg border border-gray-800/50 p-4">
-            <div ref={mermaidRef} className="w-full max-w-4xl" />
+        <div className="flex justify-center overflow-x-auto p-4 bg-gray-950 rounded border border-gray-800 min-h-[300px]">
+            <div ref={mermaidRef} className="w-full max-w-2xl" />
         </div>
     </div>
   );

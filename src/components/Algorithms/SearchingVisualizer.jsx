@@ -25,8 +25,10 @@ const SEARCH_INFO = {
 };
 
 const SearchingVisualizer = () => {
+  // --- STATE ---
   const [array, setArray] = useState([]);
-  const [target, setTarget] = useState(null);
+  const [arraySize, setArraySize] = useState(20); // NEW: Slider State
+  const [target, setTarget] = useState(''); // NEW: User Input State
   const [foundIndex, setFoundIndex] = useState(-1);
   const [isSearching, setIsSearching] = useState(false);
   const [message, setMessage] = useState("");
@@ -34,13 +36,13 @@ const SearchingVisualizer = () => {
 
   const timeouts = useRef([]);
 
-  // 1. Initialize & Handle Algo Change
+  // 1. Initialize & Handle Changes
   useEffect(() => {
     resetArray();
     return () => clearTimeouts();
-  }, [algo]);
+  }, [algo, arraySize]); // Re-run when Algo or Size changes
 
-  // 2. FORCE STYLE RESET whenever array changes (Fixes "Phantom Highlight" bug)
+  // 2. FORCE STYLE RESET whenever array changes
   useEffect(() => {
     const bars = document.getElementsByClassName('search-box');
     for (let bar of bars) {
@@ -64,9 +66,9 @@ const SearchingVisualizer = () => {
     setFoundIndex(-1);
     setMessage("");
     
-    // Generate Array
+    // Generate Array based on Slider Size
     const newArray = [];
-    for (let i = 0; i < 28; i++) {
+    for (let i = 0; i < arraySize; i++) {
       newArray.push(Math.floor(Math.random() * 99) + 1);
     }
     
@@ -77,23 +79,28 @@ const SearchingVisualizer = () => {
     
     setArray(newArray);
     
-    // Pick Target (80% chance to be in array)
-    const randomTarget = Math.random() > 0.2 
-      ? newArray[Math.floor(Math.random() * newArray.length)] 
-      : Math.floor(Math.random() * 100);
-      
+    // Pick Random Target Default
+    const randomTarget = newArray[Math.floor(Math.random() * newArray.length)];
     setTarget(randomTarget);
   };
 
   const runSearch = () => {
     if (isSearching) return;
+    if (target === '' || isNaN(target)) {
+        setMessage("Please enter a number");
+        return;
+    }
+
     setIsSearching(true);
     setFoundIndex(-1);
     setMessage("Scanning...");
     
+    // Convert input string to number for comparison
+    const targetNum = parseInt(target);
+
     const animations = algo === 'linear' 
-        ? getLinearSearchAnimations(array, target)
-        : getBinarySearchAnimations(array, target);
+        ? getLinearSearchAnimations(array, targetNum)
+        : getBinarySearchAnimations(array, targetNum);
 
     if (animations.length === 0) {
         setMessage("Target not found!");
@@ -144,7 +151,7 @@ const SearchingVisualizer = () => {
             setFoundIndex(idx1);
             setMessage(`Found at Index ${idx1}!`);
         }
-      }, i * (algo === 'binary' ? 800 : 150)); // Binary slower for readability
+      }, i * (algo === 'binary' ? 800 : 200)); 
       
       timeouts.current.push(timeout);
     }
@@ -153,7 +160,7 @@ const SearchingVisualizer = () => {
         setIsSearching(false);
         const wasFound = animations[animations.length-1][0] === "found";
         if (!wasFound) setMessage("Target not present.");
-    }, animations.length * (algo === 'binary' ? 800 : 150));
+    }, animations.length * (algo === 'binary' ? 800 : 200));
     timeouts.current.push(finalTimeout);
   };
 
@@ -164,53 +171,71 @@ const SearchingVisualizer = () => {
       <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 shadow-xl">
         <div className="flex flex-wrap justify-between items-center gap-6">
             
-            {/* Algo Tabs */}
-            <div className="flex bg-gray-700 rounded-lg p-1">
-                <button
-                    onClick={() => setAlgo('linear')}
-                    disabled={isSearching}
-                    className={`px-6 py-2 rounded-md font-bold transition-all text-sm uppercase tracking-wide ${
-                        algo === 'linear' ? 'bg-blue-600 text-white shadow' : 'text-gray-400 hover:text-white'
-                    } ${isSearching ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                    Linear
-                </button>
-                <button
-                    onClick={() => setAlgo('binary')}
-                    disabled={isSearching}
-                    className={`px-6 py-2 rounded-md font-bold transition-all text-sm uppercase tracking-wide ${
-                        algo === 'binary' ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white'
-                    } ${isSearching ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                    Binary
-                </button>
-            </div>
+            {/* Left: Algo & Slider */}
+            <div className="flex flex-col gap-4">
+                {/* Algo Tabs */}
+                <div className="flex bg-gray-700 rounded-lg p-1 w-fit">
+                    <button
+                        onClick={() => setAlgo('linear')}
+                        disabled={isSearching}
+                        className={`px-4 py-2 rounded-md font-bold transition-all text-xs uppercase tracking-wide ${
+                            algo === 'linear' ? 'bg-blue-600 text-white shadow' : 'text-gray-400 hover:text-white'
+                        } ${isSearching ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                        Linear
+                    </button>
+                    <button
+                        onClick={() => setAlgo('binary')}
+                        disabled={isSearching}
+                        className={`px-4 py-2 rounded-md font-bold transition-all text-xs uppercase tracking-wide ${
+                            algo === 'binary' ? 'bg-purple-600 text-white shadow' : 'text-gray-400 hover:text-white'
+                        } ${isSearching ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                        Binary
+                    </button>
+                </div>
 
-            {/* Target Display */}
-            <div className="flex flex-col items-center">
-                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Target Number</span>
-                <div className="text-4xl font-mono text-yellow-400 font-bold bg-gray-900 px-6 py-2 rounded border border-gray-700 shadow-inner">
-                    {target}
+                {/* Size Slider */}
+                <div className="flex items-center gap-3">
+                    <span className="text-[10px] font-bold text-gray-500 uppercase w-16">Size: {arraySize}</span>
+                    <input 
+                        type="range" min="5" max="100" step="1"
+                        value={arraySize}
+                        onChange={(e) => setArraySize(parseInt(e.target.value))}
+                        disabled={isSearching}
+                        className="w-32 h-2 bg-gray-900 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                    />
                 </div>
             </div>
 
-            {/* Actions */}
+            {/* Center: Target Input */}
+            <div className="flex flex-col items-center">
+                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Target Number</span>
+                <input 
+                    type="number"
+                    value={target}
+                    onChange={(e) => setTarget(e.target.value)}
+                    className="text-4xl font-mono text-yellow-400 font-bold bg-gray-900 px-4 py-2 rounded border border-gray-700 shadow-inner w-32 text-center focus:outline-none focus:border-yellow-500 transition-colors"
+                />
+            </div>
+
+            {/* Right: Actions */}
             <div className="flex gap-3">
                 <button 
                     onClick={resetArray} 
                     disabled={isSearching}
-                    className="px-6 py-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-white font-bold transition-colors disabled:opacity-50"
+                    className="px-6 py-3 rounded-lg bg-gray-700 hover:bg-gray-600 text-white font-bold transition-colors disabled:opacity-50 text-sm"
                 >
-                    Shuffle Data
+                    Shuffle
                 </button>
                 <button 
                     onClick={runSearch} 
                     disabled={isSearching}
-                    className={`px-6 py-3 rounded-lg text-white font-bold transition-all shadow-lg flex items-center gap-2 ${
+                    className={`px-6 py-3 rounded-lg text-white font-bold transition-all shadow-lg flex items-center gap-2 text-sm ${
                         isSearching ? 'bg-gray-600 cursor-not-allowed' : 'bg-green-600 hover:bg-green-500 shadow-green-900/20'
                     }`}
                 >
-                    {isSearching ? 'Scanning...' : 'Start Search ▶'}
+                    {isSearching ? 'Scanning...' : 'Find Target ▶'}
                 </button>
             </div>
         </div>
@@ -233,16 +258,15 @@ const SearchingVisualizer = () => {
          {array.map((value, idx) => (
              <div 
                 key={idx}
-                className="search-box w-12 h-12 md:w-14 md:h-14 flex items-center justify-center rounded-lg border-2 border-gray-700 bg-gray-800 text-gray-400 font-bold text-lg md:text-xl transition-all duration-300 select-none"
+                className="search-box w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded border-2 border-gray-700 bg-gray-800 text-gray-400 font-bold text-sm md:text-lg transition-all duration-300 select-none"
              >
                  {value}
              </div>
          ))}
       </div>
 
-      {/* 3. EDUCATIONAL CONTENT (Expanded) */}
+      {/* 3. EDUCATIONAL CONTENT */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Description Card */}
           <div className="lg:col-span-2 bg-gray-800 p-6 rounded-lg border border-gray-700 shadow-lg">
               <h3 className="text-xl font-bold text-blue-400 mb-3 flex items-center gap-2">
                   <span>💡</span> How it Works
@@ -265,7 +289,6 @@ const SearchingVisualizer = () => {
               </div>
           </div>
 
-          {/* Complexity Card */}
           <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 shadow-lg flex flex-col justify-center">
               <h3 className="text-xl font-bold text-yellow-400 mb-6 flex items-center gap-2">
                   <span>⚡</span> Performance
